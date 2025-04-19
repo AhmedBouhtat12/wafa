@@ -5,6 +5,7 @@ import './App.css';
 
 function App() {
     const [authenticated, setAuthenticated] = useState(false);
+    const [hasConsultRole, setHasConsultRole] = useState(false);
     const [personnes, setPersonnes] = useState([]);
     const [name, setName] = useState('');
     const [email, setEmail] = useState('');
@@ -20,15 +21,18 @@ function App() {
             keycloak.init({ onLoad: 'login-required' }).then(auth => {
                 setAuthenticated(auth);
                 if (auth) {
+                    const roles = keycloak.realmAccess?.roles || [];
+                    setHasConsultRole(roles.includes("Role_Consultation"));
                     fetchPersonnes();
                 }
             }).catch(console.error);
         } else {
             setAuthenticated(true);
+            const roles = keycloak.realmAccess?.roles || [];
+            setHasConsultRole(roles.includes("Role_Consultation"));
             fetchPersonnes();
         }
     }, []);
-
 
     const fetchPersonnes = () => {
         axios.get(API_URL, {
@@ -51,12 +55,12 @@ function App() {
         };
 
         if (idEdit === null) {
-            axios.post(API_URL, data, config).then(() => {
+            axios.post(`${API_URL}/add`, data, config).then(() => {
                 fetchPersonnes();
                 resetForm();
             });
         } else {
-            axios.put(`${API_URL}/${idEdit}`, data, config).then(() => {
+            axios.put(`${API_URL}/edit/${idEdit}`, data, config).then(() => {
                 fetchPersonnes();
                 resetForm();
             });
@@ -73,7 +77,7 @@ function App() {
     };
 
     const handleDelete = (id) => {
-        axios.delete(`${API_URL}/${id}`, {
+        axios.delete(`${API_URL}/delet/${id}`, {
             headers: {
                 Authorization: `Bearer ${keycloak.token}`
             }
@@ -97,17 +101,19 @@ function App() {
             <button onClick={() => keycloak.logout()}>Déconnexion</button>
 
             <div className="flex-container">
-                <div className="left-panel">
-                    <form onSubmit={handleSubmit}>
-                        <input type="text" placeholder="Nom" value={name} onChange={(e) => setName(e.target.value)} required />
-                        <input type="email" placeholder="Email" value={email} onChange={(e) => setEmail(e.target.value)} required />
-                        <input type="text" placeholder="Téléphone" value={phone} onChange={(e) => setPhone(e.target.value)} />
-                        <input type="text" placeholder="Âge" value={age} onChange={(e) => setAge(e.target.value)} />
-                        <input type="text" placeholder="Adresse" value={address} onChange={(e) => setAdress(e.target.value)} />
-                        <button type="submit">{idEdit === null ? "Ajouter" : "Modifier"}</button>
-                        {idEdit !== null && <button type="button" onClick={resetForm}>Annuler</button>}
-                    </form>
-                </div>
+                {!hasConsultRole && (
+                    <div className="left-panel">
+                        <form onSubmit={handleSubmit}>
+                            <input type="text" placeholder="Nom" value={name} onChange={(e) => setName(e.target.value)} required />
+                            <input type="email" placeholder="Email" value={email} onChange={(e) => setEmail(e.target.value)} required />
+                            <input type="text" placeholder="Téléphone" value={phone} onChange={(e) => setPhone(e.target.value)} />
+                            <input type="text" placeholder="Âge" value={age} onChange={(e) => setAge(e.target.value)} />
+                            <input type="text" placeholder="Adresse" value={address} onChange={(e) => setAdress(e.target.value)} />
+                            <button type="submit">{idEdit === null ? "Ajouter" : "Modifier"}</button>
+                            {idEdit !== null && <button type="button" onClick={resetForm}>Annuler</button>}
+                        </form>
+                    </div>
+                )}
 
                 <div className="right-panel">
                     <table border="1" cellPadding="10" style={{ width: '100%' }}>
@@ -130,8 +136,12 @@ function App() {
                                 <td>{p.age}</td>
                                 <td>{p.address}</td>
                                 <td>
-                                    <button onClick={() => handleEdit(p)}>Modifier</button>
-                                    <button onClick={() => handleDelete(p.id)}>Supprimer</button>
+                                    {!hasConsultRole && (
+                                        <>
+                                            <button onClick={() => handleEdit(p)}>Modifier</button>
+                                            <button onClick={() => handleDelete(p.id)}>Supprimer</button>
+                                        </>
+                                    )}
                                 </td>
                             </tr>
                         ))}
