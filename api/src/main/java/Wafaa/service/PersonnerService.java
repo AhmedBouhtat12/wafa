@@ -19,7 +19,7 @@ public class PersonnerService  {
 
     @Autowired
     private  PersonnerRepo repository;
-   // @Qualifier("personnerMapper")
+
     @Autowired
     private  PersonnerMapper mapper;
 
